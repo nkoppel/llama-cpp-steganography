@@ -1,5 +1,5 @@
 [package]
-name = "llama_testing"
+name = "llama-cpp-steganography"
 version = "0.1.0"
 edition = "2021"
 

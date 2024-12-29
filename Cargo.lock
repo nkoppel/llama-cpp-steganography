@@ -376,18 +376,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "llama-cpp-sys-2"
-version = "0.1.86"
-source = "git+https://github.com/utilityai/llama-cpp-rs#9af1286e22e85793f8d4306966b610565829c8dc"
-dependencies = [
- "bindgen",
- "cc",
- "cmake",
- "glob",
-]
-
-[[package]]
-name = "llama_testing"
+name = "llama-cpp-steganography"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -396,6 +385,17 @@ dependencies = [
  "memchr",
  "ordered-float",
  "rand",
+]
+
+[[package]]
+name = "llama-cpp-sys-2"
+version = "0.1.86"
+source = "git+https://github.com/utilityai/llama-cpp-rs#9af1286e22e85793f8d4306966b610565829c8dc"
+dependencies = [
+ "bindgen",
+ "cc",
+ "cmake",
+ "glob",
 ]
 
 [[package]]
