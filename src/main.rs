@@ -12,7 +12,7 @@ mod decoder;
 mod generation_context;
 mod logit_vector;
 mod range_coder;
-mod stenography;
+mod steganography;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -28,6 +28,14 @@ struct Cli {
     /// Run inference on the GPU
     #[arg(long, short)]
     gpu: bool,
+
+    /// File to use as input (defaults to stdin) 
+    #[arg(short, long)]
+    infile: Option<String>,
+
+    /// File to use as output (defaults to stdout) 
+    #[arg(short, long)]
+    outfile: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
