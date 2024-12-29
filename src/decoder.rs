@@ -1,17 +1,19 @@
-/// A struct used to decode [`Vec<u8>`] tokens from a into [`String`] tokens.
+const REPLACEMENT_CHARACTER_BYTES: &[u8] = "\u{FFFD}".as_bytes();
+
+/// A struct used to decode [`Vec<u8>`] tokens into [`String`] tokens.
 ///
 /// This struct can handle merging split UTF-8 codepoints.
 pub struct TokenDecoder {
-    /// A buffer used to store incomplete codepoints between calls to
-    /// [`TokenDecoder::add_token`]
     buf: Vec<u8>,
+    safe_len: usize,
 }
 
 impl TokenDecoder {
     /// Creates a new [`TokenDecoder`].
     pub fn new() -> TokenDecoder {
         TokenDecoder {
-            buf: Vec::with_capacity(64),
+            buf: Vec::new(),
+            safe_len: 0,
         }
     }
 
@@ -21,53 +23,59 @@ impl TokenDecoder {
     /// If the token has a trailing incomplete UTF-8 sequence, this method will
     /// not include it in the output string. Instead, the incomplete sequence
     /// will be stored in the decoder's buffer for the next call to this method.
-    pub fn add_token(&mut self, token: &[u8]) -> String {
-        let mut token = token;
-        let mut out = String::with_capacity(self.buf.len() + token.len());
+    pub fn add_token<'a>(&'a mut self, mut token: &[u8]) -> &'a str {
+        let old_len = self.safe_len;
 
-        if !self.buf.is_empty() {
-            self.buf.extend_from_slice(token);
-            token = self.buf.as_slice();
+        while !token.is_empty() {
+            let Err(err) = std::str::from_utf8(&self.buf[self.safe_len..]) else {
+                break;
+            };
+            if err.error_len().is_some() {
+                self.buf.truncate(self.safe_len);
+                self.buf.extend_from_slice(REPLACEMENT_CHARACTER_BYTES);
+                break;
+            }
+
+            self.buf.push(token[0]);
+            token = &token[1..];
         }
 
-        loop {
-            match std::str::from_utf8(token) {
-                Ok(s) => {
-                    out.push_str(s);
-                    self.buf.clear();
-                    return out;
-                }
-                Err(err) => {
-                    let valid_len = err.valid_up_to();
-                    out.push_str(unsafe { std::str::from_utf8_unchecked(&token[..valid_len]) });
+        while let Err(err) = std::str::from_utf8(token) {
+            let valid_len = err.valid_up_to();
+            self.buf.extend_from_slice(&token[..valid_len]);
 
-                    if let Some(len) = err.error_len() {
-                        out.push(char::REPLACEMENT_CHARACTER);
-                        token = &token[valid_len + len..];
-                        continue;
-                    }
-
-                    let mut last_bytes = [0; 4];
-                    let last_part_len = token.len() - valid_len;
-                    last_bytes[..last_part_len].clone_from_slice(&token[valid_len..]);
-
-                    self.buf.clear();
-                    self.buf.extend_from_slice(&last_bytes[..last_part_len]);
-
-                    return out;
-                }
+            if let Some(len) = err.error_len() {
+                self.buf.extend_from_slice(REPLACEMENT_CHARACTER_BYTES);
+                token = &token[valid_len + len..];
+            } else {
+                self.safe_len = self.buf.len();
+                self.buf.extend_from_slice(&token[valid_len..]);
+                return unsafe { std::str::from_utf8_unchecked(&self.buf[old_len..self.safe_len]) };
             }
         }
+
+        self.buf.extend_from_slice(token);
+        self.safe_len = self.buf.len();
+        unsafe { std::str::from_utf8_unchecked(&self.buf[old_len..]) }
     }
 
     /// Returns the last partial UTF-8 sequence stored in the decoder.
     ///
     /// If there is no partial UTF-8 sequence stored, this method will return `None`.
-    pub fn last_part(&mut self) -> Option<String> {
-        (!self.buf.is_empty()).then(|| {
-            let out = String::from_utf8_lossy(&self.buf).to_string();
-            self.buf.clear();
-            out
-        })
+    pub fn last_part(&self) -> String {
+        String::from_utf8_lossy(&self.buf[self.safe_len..]).to_string()
+    }
+
+    pub fn buffer(&self) -> &str {
+        unsafe { std::str::from_utf8_unchecked(&self.buf[..self.safe_len]) }
+    }
+
+    pub fn into_string(mut self) -> String {
+        if self.safe_len < self.buf.len() {
+            self.buf.truncate(self.safe_len);
+            self.buf.extend_from_slice(REPLACEMENT_CHARACTER_BYTES);
+        }
+
+        unsafe { String::from_utf8_unchecked(self.buf) }
     }
 }

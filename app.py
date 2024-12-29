@@ -1,23 +1,21 @@
 import gradio as gr
 import subprocess
 
-yoga_exmaple = '''Yoga is a physical, mental, and spiritual practice that originates in Hinduism. It dates back around 5,000 years ago in the Indus Valley Civilization in India. Yoga is deeply connected to the principles of Ayurveda, the traditional Indian system of medicine, which views the human body as connected to the universe and to a divine force. 
+yoga_exmaple = '''Yoga is a physical, mental, and spiritual practice or tradition that has its origins in ancient India. The word 'yoga' derives from Sanskrit, and its primary meanings are 'union' or 'to unite'.
 
-There are eight limbs of yoga as outlined in the Yoga Sutras of Patanjali, a foundational text of yoga philosophy. These eight limbs are:
+Yoga typically consists of various components:
 
-1. **Yamas** (ethics): Non-violence, truthfulness, non-stealing, celibacy, and non-possessiveness.
-2. **Niyamas** (observances): Cleanliness, contentment, self-discipline, self-inquiry, and surrender to a higher power.
-3. **Asanas** (postures): Physical postures designed to balance the body's energy and prepare it for meditation.
-4. **Pranayama** (breath control): Techniques to control the breath, which is believed to influence the mind and body.
-5. **Pratyahara** (withdrawal of the senses): The practice of withdrawing the senses from external stimuli to focus inward.
-6. **Dharana** (concentration): The practice of focusing the mind on a single point.
-7. **Dhyana** (meditation): The practice of cultivating a state of consciousness that is aware and detached.
-8. **Samadhi** (absorption): The state of being fully absorbed in the present moment, often described as a state of unity with the universe.'''
+1. **Physical Exercises (Asanas)**: Involves the use of different postures and movements to stretch and strengthen the body.
+2. **Breathing Techniques (Pranayama)**: Focuses on the regulation of breath to enhance the flow of energy in the body.
+3. **Meditation (Dhyana)**: Involves techniques to quiet the mind and achieve a state of concentration or awareness.
+4. **Philosophical Teachings**: Often includes the study of ancient texts and the practice of meditation to gain deeper insight into the nature of reality.
+
+Yoga is practiced for a variety of reasons, including physical fitness, stress relief, mental clarity, and spiritual growth. There are many different styles and forms of yoga, each with its own unique focus and approach. Some popular styles include Hatha, Vinyasa, Ashtanga, Iyengar, and Kundalini yoga.'''
 
 def encode(prompt, message, token_count, skip, min_p, top_k, temp):
     res = subprocess.run([
         "target/release/llama_testing",
-        "--model", "/home/nathan/software/models/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf",
+        "--model", "/home/nathan/software/models/josiefied-qwen2.5-7b-instruct-abliterated-v2.Q5_K_M.gguf",
         "encode",
         "--token-count", str(token_count),
         "--skip-start", str(skip),
@@ -35,7 +33,7 @@ def encode(prompt, message, token_count, skip, min_p, top_k, temp):
 def decode(prompt, skip, min_p, top_k, temp):
     res = subprocess.run([
         "target/release/llama_testing",
-        "--model", "/home/nathan/software/models/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf",
+        "--model", "/home/nathan/software/models/josiefied-qwen2.5-7b-instruct-abliterated-v2.Q5_K_M.gguf",
         "decode",
         "--skip-start", str(skip),
         "--min-p", str(min_p),
@@ -90,4 +88,5 @@ with gr.Blocks() as demo:
 
     decode_button.click(decode, inputs=[prompt_input, skip_slider, min_p_slider, top_k_slider, temp_slider], outputs=output)
 
-demo.launch()
+# demo.queue().launch(server_name="0.0.0.0")
+demo.queue().launch()

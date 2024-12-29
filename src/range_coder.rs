@@ -1,6 +1,6 @@
 const N_BITS: usize = 32;
 const NORM: u64 = 1 << N_BITS;
-pub const MAX_RANGE_DENOMINATOR: u64 = NORM - 1;
+pub const MAX_RANGE_DENOMINATOR: u64 = HALF;
 const HALF: u64 = NORM / 2;
 
 pub struct RangeEncoder {
@@ -28,6 +28,7 @@ impl RangeEncoder {
     }
 
     pub fn encode_range(&mut self, low: u64, high: u64, denominator: u64) {
+        // println!("{low:x} {high:x} {denominator:x} {:x} {:x}", self.low, self.range);
         while self.range <= HALF {
             self.out_buf.push(self.low >= HALF);
 
@@ -44,6 +45,7 @@ impl RangeEncoder {
             self.low -= NORM;
             self.carry_one();
         }
+        // println!("{:x} {:x}", self.low, self.range);
     }
 
     pub fn encode(&mut self, table: &[u64], denominator: u64, symbol: usize) {

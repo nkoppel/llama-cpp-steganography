@@ -1,29 +1,52 @@
 use anyhow::{bail, Context, Result};
 use llama_cpp_2::{
-    model::{AddBos, LlamaChatMessage, LlamaModel, Special},
+    model::{AddBos, LlamaChatMessage, LlamaModel},
+    sampling::LlamaSampler,
     token::{data::LlamaTokenData, data_array::LlamaTokenDataArray, LlamaToken},
 };
 use ordered_float::OrderedFloat;
 
 use crate::{
-    decoder::TokenDecoder,
-    generation_context::GenerationContext,
+    generation_context::{generate_text, GenerationContext, LanguageModel},
     range_coder::{RangeDecoder, RangeEncoder, MAX_RANGE_DENOMINATOR},
     DecodeArgs, EncodeArgs,
 };
+
+fn softmax(array: &mut LlamaTokenDataArray) {
+    array
+        .data
+        .sort_by(|data1, data2| data2.logit().total_cmp(&data1.logit()));
+
+    let denom = array
+        .data
+        .iter()
+        .take_while(|data| data.logit().is_finite())
+        .map(|data| data.logit().exp())
+        .sum::<f32>()
+        .ln();
+
+    for data in &mut array.data {
+        data.set_logit(data.logit() - denom);
+        data.set_p(data.logit().exp());
+    }
+
+    array.sorted = true;
+}
 
 fn coding_windows<'a>(
     array: &'a mut LlamaTokenDataArray,
     args: &DecodeArgs,
 ) -> impl Iterator<Item = &'a [LlamaTokenData]> {
-    array.sample_softmax(None);
+    softmax(array);
 
     let mut array2 = array.clone();
 
-    array2.sample_min_p(None, args.min_p, 1);
-    array2.sample_top_k(None, args.top_k as i32, 1);
-    array2.sample_temp(None, args.temp);
-    array2.sample_softmax(None);
+    array2.apply_sampler(&mut LlamaSampler::chain_simple([
+        LlamaSampler::min_p(args.min_p, 1),
+        LlamaSampler::top_k(args.top_k as i32),
+        LlamaSampler::temp(args.temp),
+    ]));
+    softmax(&mut array2);
 
     array.data[0..array2.data.len()].clone_from_slice(array2.data.as_slice());
 
@@ -87,7 +110,7 @@ pub fn sample_stenography(
 ) -> Result<LlamaToken> {
     if stenographer.tokens().len() <= args.skip_start {
         let mut tokens = normal.get_token_data();
-        tokens.sample_softmax(None);
+        softmax(&mut tokens);
 
         let token = tokens.data[0].id();
         normal.add_token(token)?;
@@ -98,7 +121,7 @@ pub fn sample_stenography(
 
     if decoder.is_done() {
         let mut tokens = normal.get_token_data();
-        tokens.sample_softmax(None);
+        softmax(&mut tokens);
 
         let token = tokens.data[0].id();
         normal.add_token(token)?;
@@ -106,7 +129,7 @@ pub fn sample_stenography(
         return Ok(token);
     }
 
-    let logits = normal.get_logits();
+    let logits = normal.get_token_data();
     let mut data_array = stenographer.get_token_data();
 
     let window = coding_windows(&mut data_array, &args.as_decode_args())
@@ -115,7 +138,7 @@ pub fn sample_stenography(
             let token_i = decoder.selected_symbol(&table, denominator);
             let token = window[token_i].id();
 
-            OrderedFloat(logits[token.0 as usize])
+            OrderedFloat(logits.data[token.0 as usize].logit())
         })
         .context("No windows")?;
 
@@ -140,7 +163,7 @@ pub fn sample_decompress(
     }
 
     let mut data_array = gen.get_token_data();
-    data_array.sample_softmax(None);
+    softmax(&mut data_array);
 
     let (table, denominator) = to_prob_table(&data_array.data);
     let token_i = decoder.decode(&table, denominator);
@@ -154,7 +177,7 @@ pub fn compress(token_data: Vec<LlamaTokenDataArray>, tokens: &[LlamaToken]) -> 
     let mut encoder = RangeEncoder::new();
 
     for (mut data_array, &token) in token_data.into_iter().zip(tokens) {
-        data_array.sample_softmax(None);
+        softmax(&mut data_array);
         let token_i = data_array
             .data
             .iter()
@@ -193,52 +216,6 @@ pub fn message_from_bools(bools: &[bool]) -> Vec<u8> {
     out.truncate(length as usize);
 
     out
-}
-
-fn generate_tokens(
-    model: &LlamaModel,
-    tokens: impl Iterator<Item = Result<LlamaToken>>,
-) -> Result<Vec<LlamaToken>> {
-    tokens
-        .take_while(|t| t.as_ref().map_or(true, |t| !model.is_eog_token(*t)))
-        .collect()
-}
-
-fn generate_text(
-    model: &LlamaModel,
-    preview: bool,
-    tokens: impl Iterator<Item = Result<LlamaToken>>,
-) -> Result<String> {
-    let mut token_decoder = TokenDecoder::new();
-    let mut out = String::new();
-
-    let tokens = tokens.map(|t| {
-        let Ok(t) = t else {
-            return t;
-        };
-
-        let piece = token_decoder.add_token(&model.token_to_bytes(t, Special::Tokenize)?);
-
-        if preview {
-            print!("{piece}");
-            std::io::Write::flush(&mut std::io::stdout())?;
-        }
-
-        out += &piece;
-
-        Ok(t)
-    });
-
-    generate_tokens(model, tokens)?;
-
-    if let Some(piece) = token_decoder.last_part() {
-        print!("{piece}");
-        out += &piece;
-    }
-
-    println!();
-
-    Ok(out)
 }
 
 fn apply_chat_template_hack(
@@ -281,7 +258,7 @@ impl GenerationContext<'_> {
         self.set_prompt(&prompt)?;
 
         let out = generate_text(
-            self.model(),
+            self.model_longlived(),
             true,
             (0..args.token_count)
                 .map(|_| sample_stenography(self, &mut stenographer, &mut decoder, args)),
@@ -322,7 +299,7 @@ impl GenerationContext<'_> {
         self.clear()?;
 
         generate_text(
-            self.model(),
+            self.model_longlived(),
             true,
             (0..1024).map(|_| sample_decompress(self, &mut decoder)),
         )

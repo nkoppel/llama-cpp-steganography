@@ -12,14 +12,7 @@ mod decoder;
 mod generation_context;
 mod logit_vector;
 mod range_coder;
-mod sample;
 mod stenography;
-
-const PROMPT: &str = "<|start_header_id|>user<|end_header_id|>
-
-Explain range coding in detail.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-";
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -136,7 +129,7 @@ fn main() -> Result<()> {
         Command::Compress => {
             println!("Normal: {}", input.len() * 8);
             println!("Compressed: {}", gen.compress_message(&input)?.len());
-        },
+        }
     }
 
     Ok(())
