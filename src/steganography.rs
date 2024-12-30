@@ -218,42 +218,15 @@ pub fn message_from_bools(bools: &[bool]) -> Vec<u8> {
     out
 }
 
-fn apply_chat_template_hack(
-    model: &LlamaModel,
-    mut messages: Vec<LlamaChatMessage>,
-) -> Result<String> {
-    let user_message = LlamaChatMessage::new(
-        "user".to_string(),
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
-    )?;
-    let assistant_message = LlamaChatMessage::new(
-        "assistant".to_string(),
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
-    )?;
-
-    messages.insert(0, user_message.clone());
-    messages.insert(1, assistant_message.clone());
-    let res1 = model.apply_chat_template(None, messages.clone(), true)?;
-
-    messages.insert(0, user_message);
-    messages.insert(1, assistant_message);
-    let res2 = model.apply_chat_template(None, messages, true)?;
-
-    let len = res2.len() - res1.len();
-    Ok(res1[len..].to_string())
-}
-
 impl GenerationContext<'_> {
     fn encode_bools(&mut self, bools: Vec<bool>, args: &EncodeArgs) -> Result<String> {
         let mut steganographer = self.partial_clone()?;
         let mut decoder = RangeDecoder::new(bools);
 
-        let prompt = apply_chat_template_hack(
-            self.model(),
-            vec![LlamaChatMessage::new(
-                "user".to_string(),
-                args.prompt.clone(),
-            )?],
+        let prompt = self.model().apply_chat_template(
+            None,
+            vec![LlamaChatMessage::new("user".to_string(), args.prompt.clone())?],
+            true,
         )?;
         self.set_prompt(&prompt)?;
 

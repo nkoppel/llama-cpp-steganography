@@ -39,52 +39,75 @@ Resources used:
 
 Command to encode:
 ```bash
-cat src/decoder.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Write a detailed survey of techniques one might use to implement a grabage collector in a programming language.' | tee garbage_collector.txt
+cat src/decoder.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain how UTF-8 works in detail.' | tee encoded_decoder.txt
 ```
 
 Command to decode:
 ```bash
-cat garbage_collector.txt | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee decoded_decoder.rs
+cat encoded_decoder.txt | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee decoded_decoder.rs
 ```
 
 The message:
 ```
-Implementing a garbage collector in a programming language typically requires consideration of various techniques, ranging from fundamental collection algorithms to specific data structure approaches for the heap, and various techniques to facilitate memory allocation and deallocation. A thorough survey of possible implementations can be tailored to specific performance and memory management goals. Below are some key methodologies one should consider when designing and implementing a garbage collector for a programming language.
+UTF-8 (8-bit Unicode Transformation Format-8)
+=============================================
 
-## Basic Garbage Collection Techniques
-1. **Mark and Sweep**: This approach marks reachable objects and then sweeps through memory to free unmarked ones. It's simple but has a high pause time.
+UTF-8 is a character encoding that is commonly used on the Internet. It is an extension of the ASCII character encoding standard but capable of representing characters from any Unicode-supported language. UTF-8 was designed to be compatible with ASCII and to avoid the need for explicit encoding declarations.
 
-2. **Copy Collection**: A newer approach where all reachable objects are copied to a new heap. The old heap is then freed, avoiding the pause time issue but potentially causing fragmentation.
+### UTF-8 Basics
 
-3. **Generational Collection**: Objects are divided into generations based on their lifetime. This strategy reduces the number of objects that need to be collected and the frequency with which it occurs.
+Here are the main characteristics of UTF-8:
 
-4. **Concurrent Mark and Sweep**: Runs the garbage collection concurrently with the application, minimizing pause times. It's complex but can significantly improve responsiveness.
+*   **Variable-length encoding:** UTF-8 uses one to four bytes to represent a character.
+*   **Backward compatibility:** UTF-8 preserves the ASCII encoding, which means that all ASCII characters are represented using the same code points (values).
+*   **Multi-byte sequences:** UTF-8 uses multi-byte sequences to represent non-ASCII characters, which means that a sequence of bytes can represent a single Unicode character.
+*   **BOM (Byte Order Mark):** UTF-8 files do not use a BOM (Byte Order Mark) by default, but you can use a BOM if you want to.
 
-## Heap Management
-1. **Heap Allocation**: Efficient allocation mechanisms are critical for garbage collectors. Techniques include:
-   - **First-fit**: The first large enough free block is allocated.
-   - **Best-fit**: The smallest large enough free block is allocated.
-   - **Worst-fit**: The largest free block is allocated.
-   - **Buddy Allocation**: Blocks are divided into pairs (buddies) to simplify memory management.
+### UTF-8 Character Encoding
 
-2. **Heap Deallocation**: Efficient deallocation is also crucial. Garbage collectors may use simple strategies like placing freed objects back into the free list or more complex ones like maintaining a separate free list for each object size.
+UTF-8 uses a binary structure known as an "UTF-8 sequence" to represent characters. These sequences are designed to be more efficient to process than the variable-length representations of other Unicode encoding forms.
 
-## Memory Management and Allocation
-1. **Reference Counting**: Each object has a reference count that increments and decrements as objects are allocated or deallocated. When a count drops to zero, the object is freed.
+An example of how characters can be represented in UTF-8 is as follows:
 
-2. **Epoch-based Allocation**: Objects are assigned a timestamp (epoch) when they are allocated. The garbage collector then identifies objects that have survived without being referenced since the epoch was assigned.
+| Byte Sequence | Unicode Code Point | Character |
+| --- | --- | --- |
+| `0x00` | U+0000 | Null character |
+| `0x01` | U+0001 | Start of heading |
+| `0x02` | U+0002 | Start of text |
+| `0x03` | U+0003 | End of text |
+| `0x04` | U+0004 | End of selection |
+| `0x05` | U+0005 | Cancel |
+| `0x06` | U+0006 | Start of highlighted text |
+| `0x07` | U+0007 | Start of graphics |
+| `0x08` | U+0008 | End of graphics |
+| ... | ... | ... |
 
-3. **Profiling and Feedback**: To optimize garbage collection performance, it's essential to provide profiling data and feedback mechanisms to the garbage collector about object lifetimes and usage patterns.
+### UTF-8 Structure
 
-## Hybrid and Incremental Collection
-1. **Incremental Collection**: The garbage collector stops the application briefly for a small amount of work, then resumes it, repeating this process until the collection is complete.
+A UTF-8 sequence consists of one or more bytes that start with a byte value between 0x00 and 0x7F. Characters are encoded as follows:
 
-2. **Hybrid Collection**: A combination of different collection strategies, for example, using concurrent mark and sweep for young generations but stop-the-world collection for old generations.
+*   **ASCII-compatible characters:** These are characters with Unicode code points less than U+0080 and are encoded using a single byte equal to the code point.
+*   **Non-ASCII characters:** These are characters with Unicode code points greater than or equal to U+0080, but less than U+0800. These are encoded using two bytes with the first byte being `0xC2` followed by a byte with the code point shifted by 6 bits.
+*   **Supplementary characters:** These are characters with Unicode code points greater than or equal to U+0800 but less than U+10000. These are encoded using three bytes with the first byte being `0xE0` followed by two bytes that have code points shifted by 6 bits.
 
-## Finalizers and Deallocation
-1. **Finalizers**: Allow objects to perform clean-up actions before they're garbage collected.
+Here is the structure of the UTF-8 sequence:
 
-2. **Deallocation Algorithms**: Efficiently deallocate memory to reduce memory fragmentation and improve garbage collector performance.
+*   **Byte 1:** The first byte of a UTF-8 sequence is in the range of 0xC2 to 0xF4 and represents a code point with a range of `U+0080` to `U+10FFFF`.
+*   **Byte 2 to N:** The following bytes of the sequence, if any, are in the range of `U+80` to `U+BF` and represent a code point with a range of `U+0800` to `U+10FFFF`.
 
-Implementing a garbage collector requires a deep understanding of memory management, algorithmic complexity, and the trade-offs between pause time, memory usage, and execution speed. Tailoring a garbage collection strategy to the specific requirements and constraints of the programming language, such as performance goals, object lifetime patterns, and memory availability,
+### UTF-8 Conversion Examples
+
+Here are some examples of how to encode and decode UTF-8 strings:
+
+*   **Single ASCII character:** `hello` -> `\x68\x65\x6c\x6c\x6f`
+*   **Single non-ASCII character:** `¡` -> `\xc2\xa1`
+*   **Supplementary character:** `€` -> `\xe2\x82\xac`
+
+### UTF-8 Parsing and Processing
+
+You can parse and process UTF-8 strings by using a library that supports UTF-8 encoding. Here are some steps for UTF-8 parsing:
+
+1.  **Read a byte:** Read the first byte of the sequence. This byte should be in the range `0x00` to `0x7F` for ASCII characters or in the range `0xC2` to `0xF4` for non-ASCII characters.
+2.  **Determine the length of the sequence:** For ASCII characters, the length of the sequence is one. For non-ASCII characters, the length of the sequence can be two, three, or four bytes.
+3.  **Shift the code point:** For non-ASCII characters, shift the code point by 6 bits for each byte after the first byte.
 ```

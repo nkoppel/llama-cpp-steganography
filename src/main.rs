@@ -29,11 +29,11 @@ struct Cli {
     #[arg(long, short)]
     gpu: bool,
 
-    /// File to use as input (defaults to stdin) 
+    /// File to use as input (defaults to stdin)
     #[arg(short, long)]
     infile: Option<String>,
 
-    /// File to use as output (defaults to stdout) 
+    /// File to use as output (defaults to stdout)
     #[arg(short, long)]
     outfile: Option<String>,
 }
