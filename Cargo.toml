@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# llama-cpp-2 = { git = "https://github.com/utilityai/llama-cpp-rs", features = ["native"] }
-llama-cpp-2 = { path = "../../rust-contrib/llama-cpp-rs/llama-cpp-2", features = ["native"] }
+llama-cpp-2 = { git = "https://github.com/nkoppel/llama-cpp-rs", features = ["native"] }
 anyhow = { version = "1", features = ["backtrace"] }
 
 rand = "0.8"
