@@ -142,9 +142,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.2.6"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d6dbb628b8f8555f86d0323c2eb39e3ec81901f4b83e091db8a6a76d316a333"
+checksum = "a012a0df96dd6d06ba9a1b29d6402d1a5d77c6befd2566afdc26e10603dc93d7"
 dependencies = [
  "jobserver",
  "libc",
@@ -367,7 +367,8 @@ checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
 [[package]]
 name = "llama-cpp-2"
 version = "0.1.86"
-source = "git+https://github.com/nkoppel/llama-cpp-rs#0c91d64cdd1dcf22e429b7a6d3c65d402623c9c9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ee4528f9e19023d513b8fbdc6c0db2e5c7e9fea37398a71179f1634542eae59"
 dependencies = [
  "enumflags2",
  "llama-cpp-sys-2",
@@ -390,7 +391,8 @@ dependencies = [
 [[package]]
 name = "llama-cpp-sys-2"
 version = "0.1.86"
-source = "git+https://github.com/nkoppel/llama-cpp-rs#0c91d64cdd1dcf22e429b7a6d3c65d402623c9c9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a20fc8336faf031d23fac2755669f21d206541da1e0104710afc61dc55780bd"
 dependencies = [
  "bindgen",
  "cc",
@@ -609,9 +611,9 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "syn"
-version = "2.0.93"
+version = "2.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c786062daee0d6db1132800e623df74274a0a87322d8e183338e01b3d98d058"
+checksum = "987bc0be1cdea8b10216bd06e2ca407d40b9543468fafd3ddfb02f36e77f71f3"
 dependencies = [
  "proc-macro2",
  "quote",

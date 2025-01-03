@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use llama_cpp_2::{
-    model::{AddBos, LlamaChatMessage, LlamaModel},
+    model::{AddBos, LlamaChatMessage},
     sampling::LlamaSampler,
     token::{data::LlamaTokenData, data_array::LlamaTokenDataArray, LlamaToken},
 };
@@ -41,7 +41,7 @@ fn coding_windows<'a>(
 
     let mut array2 = array.clone();
 
-    array2.apply_sampler(&mut LlamaSampler::chain_simple([
+    array2.apply_sampler(&LlamaSampler::chain_simple([
         LlamaSampler::min_p(args.min_p, 1),
         LlamaSampler::top_k(args.top_k as i32),
         LlamaSampler::temp(args.temp),
