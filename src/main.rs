@@ -61,7 +61,7 @@ struct EncodeArgs {
     skip_start: usize,
 
     /// The maximum number of tokens to generate
-    #[arg(short, long, default_value_t = 1024)]
+    #[arg(short, long, default_value_t = 4096)]
     token_count: usize,
 
     /// MinP filtering value for sampling

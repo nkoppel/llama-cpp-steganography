@@ -53,79 +53,16 @@ Once the range decoder has finished decoding the compressed message, tokens can 
 ## Example message
 Resources used:
 - [Bartowski's](https://huggingface.co/bartowski) quantization of [Meta Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct), found [here](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/blob/main/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf).
-- [decoder.rs](https://github.com/nkoppel/llama-cpp-steganography/blob/f6e23feaa1cb9f6d708884eeefc8bcbc36f716de/src/decoder.rs), a part of this project's source code.
+- [decoder.rs](src/decoder.rs), a part of this project's source code.
 
 Command to encode:
 ```bash
-cat src/decoder.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain how UTF-8 works in detail.' | tee encoded_decoder.txt
+cat src/decoder.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain how UTF-8 works in detail.' | tee encoded_decoder.md
 ```
 
 Command to decode:
 ```bash
-cat encoded_decoder.txt | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee decoded_decoder.rs
+cat encoded_decoder.md | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee decoded_decoder.rs
 ```
 
-The message:
-```
-UTF-8 (8-bit Unicode Transformation Format-8)
-=============================================
-
-UTF-8 is a character encoding that is commonly used on the Internet. It is an extension of the ASCII character encoding standard but capable of representing characters from any Unicode-supported language. UTF-8 was designed to be compatible with ASCII and to avoid the need for explicit encoding declarations.
-
-### UTF-8 Basics
-
-Here are the main characteristics of UTF-8:
-
-*   **Variable-length encoding:** UTF-8 uses one to four bytes to represent a character.
-*   **Backward compatibility:** UTF-8 preserves the ASCII encoding, which means that all ASCII characters are represented using the same code points (values).
-*   **Multi-byte sequences:** UTF-8 uses multi-byte sequences to represent non-ASCII characters, which means that a sequence of bytes can represent a single Unicode character.
-*   **BOM (Byte Order Mark):** UTF-8 files do not use a BOM (Byte Order Mark) by default, but you can use a BOM if you want to.
-
-### UTF-8 Character Encoding
-
-UTF-8 uses a binary structure known as an "UTF-8 sequence" to represent characters. These sequences are designed to be more efficient to process than the variable-length representations of other Unicode encoding forms.
-
-An example of how characters can be represented in UTF-8 is as follows:
-
-| Byte Sequence | Unicode Code Point | Character |
-| --- | --- | --- |
-| `0x00` | U+0000 | Null character |
-| `0x01` | U+0001 | Start of heading |
-| `0x02` | U+0002 | Start of text |
-| `0x03` | U+0003 | End of text |
-| `0x04` | U+0004 | End of selection |
-| `0x05` | U+0005 | Cancel |
-| `0x06` | U+0006 | Start of highlighted text |
-| `0x07` | U+0007 | Start of graphics |
-| `0x08` | U+0008 | End of graphics |
-| ... | ... | ... |
-
-### UTF-8 Structure
-
-A UTF-8 sequence consists of one or more bytes that start with a byte value between 0x00 and 0x7F. Characters are encoded as follows:
-
-*   **ASCII-compatible characters:** These are characters with Unicode code points less than U+0080 and are encoded using a single byte equal to the code point.
-*   **Non-ASCII characters:** These are characters with Unicode code points greater than or equal to U+0080, but less than U+0800. These are encoded using two bytes with the first byte being `0xC2` followed by a byte with the code point shifted by 6 bits.
-*   **Supplementary characters:** These are characters with Unicode code points greater than or equal to U+0800 but less than U+10000. These are encoded using three bytes with the first byte being `0xE0` followed by two bytes that have code points shifted by 6 bits.
-
-Here is the structure of the UTF-8 sequence:
-
-*   **Byte 1:** The first byte of a UTF-8 sequence is in the range of 0xC2 to 0xF4 and represents a code point with a range of `U+0080` to `U+10FFFF`.
-*   **Byte 2 to N:** The following bytes of the sequence, if any, are in the range of `U+80` to `U+BF` and represent a code point with a range of `U+0800` to `U+10FFFF`.
-
-### UTF-8 Conversion Examples
-
-Here are some examples of how to encode and decode UTF-8 strings:
-
-*   **Single ASCII character:** `hello` -> `\x68\x65\x6c\x6c\x6f`
-*   **Single non-ASCII character:** `¡` -> `\xc2\xa1`
-*   **Supplementary character:** `€` -> `\xe2\x82\xac`
-
-### UTF-8 Parsing and Processing
-
-You can parse and process UTF-8 strings by using a library that supports UTF-8 encoding. Here are some steps for UTF-8 parsing:
-
-1.  **Read a byte:** Read the first byte of the sequence. This byte should be in the range `0x00` to `0x7F` for ASCII characters or in the range `0xC2` to `0xF4` for non-ASCII characters.
-2.  **Determine the length of the sequence:** For ASCII characters, the length of the sequence is one. For non-ASCII characters, the length of the sequence can be two, three, or four bytes.
-3.  **Shift the code point:** For non-ASCII characters, shift the code point by 6 bits for each byte after the first byte.
-```
+The encoded message can be found in [encoded\_decoder.md](encoded_decoder.md).
