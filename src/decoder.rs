@@ -28,12 +28,18 @@ impl TokenDecoder {
         let old_len = self.safe_len;
 
         for chunk in token.utf8_chunks() {
-            if !chunk.valid().is_empty() && self.safe_len < self.buf.len() {
+            if self.safe_len < self.buf.len() && chunk.valid().is_empty() {
+                self.buf.extend_from_slice(chunk.invalid());
+                if std::str::from_utf8(&self.buf[self.safe_len..]).is_ok() {
+                    self.safe_len = self.buf.len();
+                }
+                continue;
+            }
+            if self.safe_len < self.buf.len() && !chunk.valid().is_empty() {
                 self.buf.truncate(self.safe_len);
                 self.buf.extend_from_slice(REPLACEMENT_CHARACTER_BYTES);
                 self.safe_len = self.buf.len();
             }
-
             self.buf.extend_from_slice(chunk.valid().as_bytes());
             self.safe_len = self.buf.len();
             self.buf.extend_from_slice(chunk.invalid());

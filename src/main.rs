@@ -15,8 +15,7 @@ mod range_coder;
 mod steganography;
 
 #[derive(Parser, Debug)]
-#[command(version, about)]
-#[command(propagate_version = true)]
+#[command(version, about, propagate_version = true)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
