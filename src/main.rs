@@ -10,6 +10,7 @@ use llama_cpp_2::{
 
 mod decoder;
 mod generation_context;
+mod improved_utf8_chunks;
 mod logit_vector;
 mod range_coder;
 mod steganography;

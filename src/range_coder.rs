@@ -192,7 +192,7 @@ fn test_range_coding() {
     test_range_coding_case(&[0, 5, 10, 15], 16, &[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
     test_range_coding_case(&[0, 5, 10, 15], 16, &[3]);
     test_range_coding_case(
-        &[0, 5, 10, 15],
+        &[0, NORM / 3, NORM / 3 * 2, NORM / 6 * 5],
         NORM - 1,
         &[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     );

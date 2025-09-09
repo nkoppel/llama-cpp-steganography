@@ -225,7 +225,10 @@ impl GenerationContext<'_> {
 
         let prompt = self.model().apply_chat_template(
             None,
-            vec![LlamaChatMessage::new("user".to_string(), args.prompt.clone())?],
+            vec![LlamaChatMessage::new(
+                "user".to_string(),
+                args.prompt.clone(),
+            )?],
             true,
         )?;
         self.set_prompt(&prompt)?;
