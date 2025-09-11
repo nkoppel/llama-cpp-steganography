@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::io::{Read, Write};
+
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use generation_context::{get_backend, GenerationContext};
@@ -7,6 +9,8 @@ use llama_cpp_2::{
     context::params::LlamaContextParams,
     model::{params::LlamaModelParams, LlamaModel},
 };
+
+use crate::range_coder::{bools_to_bytes, bytes_to_bools};
 
 mod decoder;
 mod generation_context;
@@ -29,13 +33,13 @@ struct Cli {
     #[arg(long, short)]
     gpu: bool,
 
-    /// File to use as input (defaults to stdin)
-    #[arg(short, long)]
-    infile: Option<String>,
+    // /// File to use as input (defaults to stdin)
+    // #[arg(short, long)]
+    // infile: Option<String>,
 
-    /// File to use as output (defaults to stdout)
-    #[arg(short, long)]
-    outfile: Option<String>,
+    // /// File to use as output (defaults to stdout)
+    // #[arg(short, long)]
+    // outfile: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -46,8 +50,11 @@ enum Command {
     /// Recover a hidden message from the text sent to stdin
     Decode(DecodeArgs),
 
-    /// Get the length of the text sent to stdin before and after compression in bits.
+    /// Use the model to compress a file
     Compress,
+
+    /// Use the model to decompress a file compressed by this program
+    Decompress,
 }
 
 #[derive(Args, Debug)]
@@ -125,19 +132,30 @@ fn main() -> Result<()> {
         .with_n_batch(2048);
 
     let mut gen = GenerationContext::new(&model, params.clone())?;
-    let input = std::io::read_to_string(std::io::stdin())?;
 
     match args.command {
         Command::Encode(encode_args) => {
+            let input = std::io::read_to_string(std::io::stdin())?;
             gen.encode_compressed(&input, &encode_args)?;
         }
         Command::Decode(decode_args) => {
+            let input = std::io::read_to_string(std::io::stdin())?;
             gen.decode_compressed(&input, &decode_args)?;
         }
         Command::Compress => {
-            println!("Normal: {}", input.len() * 8);
-            println!("Compressed: {}", gen.compress_message(&input)?.len());
+            let input = std::io::read_to_string(std::io::stdin())?;
+            eprintln!("Normal: {} bytes", input.len());
+            let compressed = bools_to_bytes(&gen.compress_message(&input)?);
+            eprintln!("Compressed: {} bytes", compressed.len());
+            std::io::stdout().write_all(&compressed)?;
         }
+        Command::Decompress => {
+            let mut input = Vec::new();
+            std::io::stdin().read_to_end(&mut input)?;
+            eprintln!("Compressed: {} bytes", input.len());
+            let decompressed = gen.decompress_message(bytes_to_bools(&input, None))?;
+            eprintln!("Normal: {} bytes", decompressed.len());
+        },
     }
 
     Ok(())

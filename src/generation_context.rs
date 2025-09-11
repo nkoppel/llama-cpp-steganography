@@ -255,7 +255,7 @@ pub fn generate_text(
     generate_tokens(model, tokens)?;
 
     if preview {
-        println!("{}", token_decoder.last_part());
+        print!("{}", token_decoder.last_part());
     }
 
     Ok(token_decoder.into_string())

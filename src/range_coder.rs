@@ -153,6 +153,16 @@ impl RangeDecoder {
     }
 }
 
+pub fn bools_to_bytes(bools: &[bool]) -> Vec<u8> {
+    bools.chunks(8).map(|c| c.iter().enumerate().map(|(i, c)| (*c as u8) << i).sum()).collect()
+}
+
+pub fn bytes_to_bools(bytes: &[u8], len: Option<usize>) -> Vec<bool> {
+    let len = len.unwrap_or(bytes.len() * 8);
+
+    bytes.iter().flat_map(|b| (0..8).map(move |i| b & (1 << i) != 0)).take(len).collect()
+}
+
 fn test_range_coding_case(table: &[u64], denom: u64, message: &[usize]) {
     let mut encoder = RangeEncoder::new();
 
