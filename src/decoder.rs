@@ -57,11 +57,10 @@ impl TokenDecoder {
 
         for chunk in utf8_chunks(token) {
             self.buf.extend_from_slice(chunk.valid().as_bytes());
-            self.safe_len = self.buf.len();
-
             if chunk.unexpected_end() {
+                self.safe_len = self.buf.len();
                 self.buf.extend_from_slice(chunk.invalid());
-            } else if !chunk.invalid().is_empty() {
+            } else {
                 self.buf.extend_from_slice(REPLACEMENT_CHARACTER_BYTES);
                 self.safe_len = self.buf.len();
             }
