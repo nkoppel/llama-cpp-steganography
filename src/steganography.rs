@@ -289,7 +289,7 @@ impl GenerationContext<'_> {
     pub fn compress_message(&mut self, message: &str) -> Result<Vec<bool>> {
         self.clear()?;
 
-        let mut tokens = self.model().str_to_token(message, AddBos::Always)?;
+        let mut tokens = self.model().str_to_token(message, AddBos::Never)?;
         tokens.push(self.model().token_eos());
 
         let data = self.add_tokens_get_token_data(&tokens)?;
