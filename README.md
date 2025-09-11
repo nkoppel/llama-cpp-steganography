@@ -52,17 +52,17 @@ Once the range decoder has finished decoding the compressed message, tokens can 
 
 ## Example message
 Resources used:
-- [Bartowski's](https://huggingface.co/bartowski) quantization of [Meta Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct), found [here](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/blob/main/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf).
-- [decoder.rs](src/decoder.rs), a part of this project's source code.
+- [Unsloth's](https://huggingface.co/unsloth) quantization of [Meta Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct), found [here](https://huggingface.co/unsloth/Llama-3.1-8B-Instruct-GGUF/blob/main/Llama-3.1-8B-Instruct-UD-Q4_K_XL.gguf).
+- [from\_utf8\_lossy\_inplace.rs](from_utf8_lossy_inplace.rs), a part of this project's source code.
 
 Command to encode:
 ```bash
-cat src/decoder.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain how UTF-8 works in detail.' | tee encoded_decoder.md
+cat from_utf8_lossy_inplace.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain UTF-8 in detail.' | tee from_utf8_lossy_inplace_encoded.md
 ```
 
 Command to decode:
 ```bash
-cat encoded_decoder.md | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee decoded_decoder.rs
+cat from_utf8_lossy_inplace_encoded.md | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf decode | tee from_utf8_lossy_inplace_decoded.rs
 ```
 
-The encoded message can be found in [encoded\_decoder.md](encoded_decoder.md).
+The encoded message can be found in [from\_utf8\_lossy\_inplace\_encoded.md](from_utf8_lossy_inplace_encoded.md).
