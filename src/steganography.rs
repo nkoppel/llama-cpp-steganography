@@ -17,6 +17,12 @@ fn softmax(array: &mut LlamaTokenDataArray) {
         .data
         .sort_by(|data1, data2| data2.logit().total_cmp(&data1.logit()));
 
+    array.sorted = true;
+
+    softmax_no_sort(array);
+}
+
+fn softmax_no_sort(array: &mut LlamaTokenDataArray) {
     let denom = array
         .data
         .iter()
@@ -29,8 +35,6 @@ fn softmax(array: &mut LlamaTokenDataArray) {
         data.set_logit(data.logit() - denom);
         data.set_p(data.logit().exp());
     }
-
-    array.sorted = true;
 }
 
 fn coding_windows<'a>(
@@ -163,7 +167,7 @@ pub fn sample_decompress(
     }
 
     let mut data_array = gen.get_token_data();
-    softmax(&mut data_array);
+    softmax_no_sort(&mut data_array);
 
     let (table, denominator) = to_prob_table(&data_array.data);
     let token_i = decoder.decode(&table, denominator);
@@ -177,7 +181,7 @@ pub fn compress(token_data: Vec<LlamaTokenDataArray>, tokens: &[LlamaToken]) -> 
     let mut encoder = RangeEncoder::new();
 
     for (mut data_array, &token) in token_data.into_iter().zip(tokens) {
-        softmax(&mut data_array);
+        softmax_no_sort(&mut data_array);
         let token_i = data_array
             .data
             .iter()
@@ -224,8 +228,8 @@ impl GenerationContext<'_> {
         let mut decoder = RangeDecoder::new(bools);
 
         let prompt = self.model().apply_chat_template(
-            None,
-            vec![LlamaChatMessage::new(
+            &self.model().chat_template(None)?,
+            &[LlamaChatMessage::new(
                 "user".to_string(),
                 args.prompt.clone(),
             )?],

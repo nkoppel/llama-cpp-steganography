@@ -151,7 +151,7 @@ impl LanguageModel for GenerationContext<'_> {
 
     fn truncate_tokens(&mut self, n_tokens: usize) -> Result<()> {
         self.context
-            .clear_kv_cache_seq(None, Some(n_tokens as u32), None)?;
+            .clear_kv_cache_seq(Some(0), Some(n_tokens as u32), None)?;
         self.tokens.truncate(n_tokens);
 
         Ok(())
