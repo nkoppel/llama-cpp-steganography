@@ -4,7 +4,6 @@ use llama_cpp_2::{
     sampling::LlamaSampler,
     token::{data::LlamaTokenData, data_array::LlamaTokenDataArray, LlamaToken},
 };
-use ordered_float::OrderedFloat;
 
 use crate::{
     generation_context::{generate_text, GenerationContext, LanguageModel},
@@ -23,18 +22,46 @@ fn softmax(array: &mut LlamaTokenDataArray) {
 }
 
 fn softmax_no_sort(array: &mut LlamaTokenDataArray) {
+    let denom0 = array
+        .data
+        .iter()
+        .map(|data| data.logit())
+        .max_by(f32::total_cmp)
+        .unwrap();
+
     let denom = array
         .data
         .iter()
-        .take_while(|data| data.logit().is_finite())
-        .map(|data| data.logit().exp())
+        .filter(|data| data.logit().is_finite())
+        .map(|data| (data.logit() - denom0).exp())
         .sum::<f32>()
         .ln();
 
     for data in &mut array.data {
-        data.set_logit(data.logit() - denom);
+        data.set_logit(data.logit() - denom0 - denom);
         data.set_p(data.logit().exp());
     }
+}
+
+fn distinguishability(ps: &mut LlamaTokenDataArray, qs: &mut LlamaTokenDataArray) -> f64 {
+    if !ps.sorted {
+        softmax(ps);
+    }
+    if !qs.sorted {
+        softmax(qs);
+    }
+
+    let mut table = vec![0.; ps.data.len()];
+
+    for q in &qs.data {
+        table[q.id().0 as usize] = q.p();
+    }
+
+    ps.data
+        .iter()
+        .map(|p| p.p().max(table[p.id().0 as usize]) as f64)
+        .sum::<f64>()
+        * 0.5
 }
 
 fn coding_windows<'a>(
@@ -83,77 +110,139 @@ fn to_prob_table(data: &[LlamaTokenData]) -> (Vec<u64>, u64) {
     (out, sum.max(1))
 }
 
+// pub fn recover_message(
+// token_data: Vec<LlamaTokenDataArray>,
+// tokens: &[LlamaToken],
+// args: &DecodeArgs,
+// ) -> Vec<bool> {
+// let mut encoder = RangeEncoder::new();
+
+// for (mut data_array, &token) in token_data.into_iter().zip(tokens).skip(args.skip_start) {
+// let window = coding_windows(&mut data_array, args)
+// .find(|window| window.iter().any(|d| d.id() == token))
+// .expect("No window contains the token");
+// let token_i = window
+// .iter()
+// .position(|d| d.id() == token)
+// .expect("The window does not contain the token!");
+
+// let (table, denominator) = to_prob_table(window);
+// encoder.encode(&table, denominator, token_i);
+// }
+
+// encoder.flush()
+// }
+
+// pub fn sample_steganography(
+// normal: &mut GenerationContext,
+// steganographer: &mut GenerationContext,
+// decoder: &mut RangeDecoder,
+// args: &EncodeArgs,
+// ) -> Result<LlamaToken> {
+// if steganographer.tokens().len() <= args.skip_start {
+// let mut tokens = normal.get_token_data();
+// softmax(&mut tokens);
+
+// let token = tokens.data[0].id();
+// normal.add_token(token)?;
+// steganographer.add_token(token)?;
+
+// return Ok(token);
+// }
+
+// if decoder.is_done() {
+// let mut tokens = normal.get_token_data();
+// softmax(&mut tokens);
+
+// let token = tokens.data[0].id();
+// normal.add_token(token)?;
+
+// return Ok(token);
+// }
+
+// let logits = normal.get_token_data();
+// let mut data_array = steganographer.get_token_data();
+
+// let window = coding_windows(&mut data_array, &args.as_decode_args())
+// .max_by_key(|window| {
+// let (table, denominator) = to_prob_table(window);
+// let token_i = decoder.selected_symbol(&table, denominator);
+// let token = window[token_i].id();
+
+// OrderedFloat(logits.data[token.0 as usize].logit())
+// })
+// .context("No windows")?;
+
+// let (table, denominator) = to_prob_table(window);
+// let token_i = decoder.decode(&table, denominator);
+// let token = window[token_i].id();
+
+// normal.add_token(token)?;
+// steganographer.add_token(token)?;
+
+// Ok(token)
+// }
+
+const AUX_PROMPT: &str = "<|start_header_id|>user<|end_header_id|>\n\nWrite only about yoga. You are absolutely obsessed with yoga. If you find yourself writing about something other than yoga, quickly change the topic back to yoga. Yoga is love, yoga is life.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n";
+const THRESHOLD: f64 = 0.60;
+
+pub fn sample_steganography(
+    steganographer: &mut GenerationContext,
+    auxilliary: &mut GenerationContext,
+    normal: &mut GenerationContext,
+    decoder: &mut RangeDecoder,
+    _args: &EncodeArgs,
+) -> Result<LlamaToken> {
+    let mut steg_data = steganographer.get_token_data();
+    let mut aux_data = auxilliary.get_token_data();
+
+    let distinguishability = distinguishability(&mut steg_data, &mut aux_data);
+
+    eprintln!(" {distinguishability} ");
+
+    let token = if distinguishability > THRESHOLD {
+        normal.get_token_data().sample_token_greedy()
+    } else {
+        steg_data.apply_sampler(&LlamaSampler::min_p(0.01, 1));
+        let (table, denominator) = to_prob_table(&steg_data.data);
+        let token_i = decoder.decode(&table, denominator);
+        steg_data.data[token_i].id()
+    };
+
+    steganographer.add_token(token)?;
+    auxilliary.add_token(token)?;
+    normal.add_token(token)?;
+
+    Ok(token)
+}
+
 pub fn recover_message(
-    token_data: Vec<LlamaTokenDataArray>,
+    steg_datas: Vec<LlamaTokenDataArray>,
+    aux_datas: Vec<LlamaTokenDataArray>,
     tokens: &[LlamaToken],
-    args: &DecodeArgs,
-) -> Vec<bool> {
+    _args: &DecodeArgs,
+) -> Result<Vec<bool>> {
     let mut encoder = RangeEncoder::new();
 
-    for (mut data_array, &token) in token_data.into_iter().zip(tokens).skip(args.skip_start) {
-        let window = coding_windows(&mut data_array, args)
-            .find(|window| window.iter().any(|d| d.id() == token))
-            .expect("No window contains the token");
-        let token_i = window
-            .iter()
-            .position(|d| d.id() == token)
-            .expect("The window does not contain the token!");
+    for ((mut steg_data, mut aux_data), token) in steg_datas.into_iter().zip(aux_datas).zip(tokens)
+    {
+        let distinguishability = distinguishability(&mut steg_data, &mut aux_data);
 
-        let (table, denominator) = to_prob_table(window);
+        if distinguishability > THRESHOLD {
+            continue;
+        }
+
+        steg_data.apply_sampler(&LlamaSampler::min_p(0.01, 1));
+        let (table, denominator) = to_prob_table(&steg_data.data);
+        let token_i = steg_data
+            .data
+            .iter()
+            .position(|t| t.id() == *token)
+            .context("Token was filtered out")?;
         encoder.encode(&table, denominator, token_i);
     }
 
-    encoder.flush()
-}
-
-pub fn sample_steganography(
-    normal: &mut GenerationContext,
-    steganographer: &mut GenerationContext,
-    decoder: &mut RangeDecoder,
-    args: &EncodeArgs,
-) -> Result<LlamaToken> {
-    if steganographer.tokens().len() <= args.skip_start {
-        let mut tokens = normal.get_token_data();
-        softmax(&mut tokens);
-
-        let token = tokens.data[0].id();
-        normal.add_token(token)?;
-        steganographer.add_token(token)?;
-
-        return Ok(token);
-    }
-
-    if decoder.is_done() {
-        let mut tokens = normal.get_token_data();
-        softmax(&mut tokens);
-
-        let token = tokens.data[0].id();
-        normal.add_token(token)?;
-
-        return Ok(token);
-    }
-
-    let logits = normal.get_token_data();
-    let mut data_array = steganographer.get_token_data();
-
-    let window = coding_windows(&mut data_array, &args.as_decode_args())
-        .max_by_key(|window| {
-            let (table, denominator) = to_prob_table(window);
-            let token_i = decoder.selected_symbol(&table, denominator);
-            let token = window[token_i].id();
-
-            OrderedFloat(logits.data[token.0 as usize].logit())
-        })
-        .context("No windows")?;
-
-    let (table, denominator) = to_prob_table(window);
-    let token_i = decoder.decode(&table, denominator);
-    let token = window[token_i].id();
-
-    normal.add_token(token)?;
-    steganographer.add_token(token)?;
-
-    Ok(token)
+    Ok(encoder.flush())
 }
 
 pub fn sample_decompress(
@@ -225,7 +314,10 @@ pub fn message_from_bools(bools: &[bool]) -> Vec<u8> {
 impl GenerationContext<'_> {
     fn encode_bools(&mut self, bools: Vec<bool>, args: &EncodeArgs) -> Result<String> {
         let mut steganographer = self.partial_clone()?;
+        let mut auxilliary = self.partial_clone()?;
         let mut decoder = RangeDecoder::new(bools);
+
+        auxilliary.set_prompt(AUX_PROMPT)?;
 
         let prompt = self.model().apply_chat_template(
             &self.model().chat_template(None)?,
@@ -240,8 +332,15 @@ impl GenerationContext<'_> {
         let out = generate_text(
             self.model_longlived(),
             true,
-            (0..args.token_count)
-                .map(|_| sample_steganography(self, &mut steganographer, &mut decoder, args)),
+            (0..args.token_count).map(|_| {
+                sample_steganography(
+                    &mut steganographer,
+                    &mut auxilliary,
+                    self,
+                    &mut decoder,
+                    args,
+                )
+            }),
         )?;
 
         if !decoder.is_done() {
@@ -265,8 +364,10 @@ impl GenerationContext<'_> {
         self.clear()?;
         let tokens = self.model().str_to_token(text, AddBos::Never)?;
         let data = self.add_tokens_get_token_data(&tokens)?;
+        self.set_prompt(AUX_PROMPT)?;
+        let aux_data = self.add_tokens_get_token_data(&tokens)?;
 
-        Ok(recover_message(data, &tokens, args))
+        recover_message(data, aux_data, &tokens, args)
     }
 
     pub fn decode_messsage(&mut self, text: &str, args: &DecodeArgs) -> Result<Vec<u8>> {

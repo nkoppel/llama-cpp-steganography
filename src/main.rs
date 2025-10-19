@@ -32,7 +32,6 @@ struct Cli {
     /// Run inference on the GPU
     #[arg(long, short)]
     gpu: bool,
-
     // /// File to use as input (defaults to stdin)
     // #[arg(short, long)]
     // infile: Option<String>,
@@ -155,7 +154,7 @@ fn main() -> Result<()> {
             eprintln!("Compressed: {} bytes", input.len());
             let decompressed = gen.decompress_message(bytes_to_bools(&input, None))?;
             eprintln!("Normal: {} bytes", decompressed.len());
-        },
+        }
     }
 
     Ok(())
