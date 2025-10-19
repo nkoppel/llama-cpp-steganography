@@ -57,7 +57,7 @@ Resources used:
 
 Command to encode:
 ```bash
-cat from_utf8_lossy_inplace.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Write a long, detailed essay arguing that UTF-8 is an effecient, effective format for international digital communications.' | tee from_utf8_lossy_inplace_encoded.md
+cat from_utf8_lossy_inplace.rs | cargo r -r -- --model Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf encode 'Explain UTF-8 in detail.' | tee from_utf8_lossy_inplace_encoded.md
 ```
 
 Command to decode:
